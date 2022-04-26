@@ -812,7 +812,28 @@ core_inst (
     .qsfp_1_rx_clk_3(qsfp_1_rx_clk_3_int),
     .qsfp_1_rx_rst_3(qsfp_1_rx_rst_3_int),
     .qsfp_1_rxd_3(qsfp_1_rxd_3_int),
-    .qsfp_1_rxc_3(qsfp_1_rxc_3_int)
+    .qsfp_1_rxc_3(qsfp_1_rxc_3_int),
+    
+    //
+    .rx_payload_axis_tdata(),
+    .rx_udp_payload_axis_tkeep(),
+    .rx_udp_payload_axis_tvalid(),
+    .rx_udp_payload_axis_tready(1),
+    .rx_udp_payload_axis_tlast(),
+
+    .tx_payload_axis_tdata(0),
+    .tx_udp_payload_axis_tkeep(0),
+    .tx_udp_payload_axis_tvalid(1),
+    .tx_udp_payload_axis_tready(),
+    .tx_udp_payload_axis_tlast(0), 
+
+    //network config
+    .local_mac(48'h02_00_00_00_00_00),
+    .local_ip({8'd192, 8'd168, 8'd1,   8'd128})   ,
+    .gateway_ip({8'd192, 8'd168, 8'd1,   8'd1}) ,
+    .subnet_mask({8'd255, 8'd255, 8'd255, 8'd0}),
+    .dest_mac(48'h02_00_00_00_00_01),   
+    .dest_ip({8'd192, 8'd168, 8'd1,   8'd129})    
 );
 
 endmodule

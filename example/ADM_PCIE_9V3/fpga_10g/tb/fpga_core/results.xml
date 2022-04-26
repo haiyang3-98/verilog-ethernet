@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1650927471" />
+    <testcase name="run_test" classname="test_fpga_core" file="/home/haiyang3/verilog-ethernet/example/ADM_PCIE_9V3/fpga_10g/tb/fpga_core/test_fpga_core.py" lineno="156" time="1.3866784572601318" sim_time_ns="4377.601" ratio_time="3156.8969555130184" />
+  </testsuite>
+</testsuites>

@@ -36,7 +36,9 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge
 
 from cocotbext.eth import XgmiiFrame, XgmiiSource, XgmiiSink
+from cocotbext.axi import AxiStreamFrame, AxiStreamBus, AxiStreamSource, AxiStreamSink 
 
+from netaddr import *
 
 class TB:
     def __init__(self, dut):
@@ -47,6 +49,9 @@ class TB:
 
         cocotb.start_soon(Clock(dut.clk, 2.56, units="ns").start())
 
+        self.source = AxiStreamSource(AxiStreamBus.from_prefix(dut, "tx_payload_axis"), dut.clk, dut.rst)
+        self.sink = AxiStreamSink(AxiStreamBus.from_prefix(dut, "rx_payload_axis"), dut.clk, dut.rst)
+        
         # Ethernet
         cocotb.start_soon(Clock(dut.qsfp_0_rx_clk_0, 2.56, units="ns").start())
         self.qsfp_0_0_source = XgmiiSource(dut.qsfp_0_rxd_0, dut.qsfp_0_rxc_0, dut.qsfp_0_rx_clk_0, dut.qsfp_0_rx_rst_0)
@@ -152,6 +157,32 @@ class TB:
         self.dut.qsfp_1_rx_rst_3 <= 0
         self.dut.qsfp_1_tx_rst_3 <= 0
 
+    def set_idle_generator(self, generator=None):
+        if generator:
+            self.source.set_pause_generator(generator())
+
+    def set_backpressure_generator(self, generator=None):
+        if generator:
+            self.sink.set_pause_generator(generator())
+
+    def set_config(self, local_mac, local_ip, gateway_ip, dest_mac, dest_ip, subnet_mask = '255.255.255.0'):
+        self.dut.local_mac = local_mac
+        self.dut.local_ip = local_ip
+        self.dut.gateway_ip = gateway_ip
+        self.dut.subnet_mask = subnet_mask
+        self.dut.dest_mac = dest_mac
+        self.dut.dest_ip = dest_ip
+
+def size_list():
+    data_width = len(cocotb.top.axis_tdata)
+    byte_width = data_width // 8
+    return list(range(1, byte_width*4+1)) + [512] + [1]*64
+
+
+def incrementing_payload(length):
+    return bytearray(itertools.islice(itertools.cycle(range(256)), length))
+
+
 
 @cocotb.test()
 async def run_test(dut):
@@ -159,6 +190,16 @@ async def run_test(dut):
     tb = TB(dut)
 
     await tb.init()
+
+    #set inserter
+    #none
+    local_mac = int(EUI('02:00:00:00:00:00'))
+    local_ip = int(IPAddress('192.168.1.128'))
+    gateway_ip = int(IPAddress('192.168.1.1'))
+    subnet_mask = int(IPAddress('255.255.255.0'))
+    dest_mac = int(EUI('5a:51:52:53:54:55'))
+    dest_ip = int(IPAddress('192.168.1.100'))
+    tb.set_config(local_mac, local_ip, gateway_ip, dest_mac, dest_ip, subnet_mask)
 
     tb.log.info("test UDP RX packet")
 
@@ -168,9 +209,25 @@ async def run_test(dut):
     udp = UDP(sport=5678, dport=1234)
     test_pkt = eth / ip / udp / payload
 
+    tb.log.info("TX packet: %s", repr(test_pkt))
+
     test_frame = XgmiiFrame.from_payload(test_pkt.build())
 
     await tb.qsfp_0_0_source.send(test_frame)
+
+    tb.log.info("Receive payload in AXIS")
+    rx_frame = await tb.sink.recv()
+
+    assert rx_frame.tdata == payload
+
+    
+
+    
+
+    tb.log.info("Send payload in AXIS")
+    test_frame = AxiStreamFrame(payload)
+    await tb.source.send(test_frame)
+
 
     tb.log.info("receive ARP request")
 
@@ -204,6 +261,7 @@ async def run_test(dut):
 
     await tb.qsfp_0_0_source.send(resp_frame)
 
+
     tb.log.info("receive UDP packet")
 
     rx_frame = await tb.qsfp_0_0_sink.recv()
@@ -214,11 +272,15 @@ async def run_test(dut):
 
     assert rx_pkt.dst == test_pkt.src
     assert rx_pkt.src == test_pkt.dst
+    
+    '''
     assert rx_pkt[IP].dst == test_pkt[IP].src
     assert rx_pkt[IP].src == test_pkt[IP].dst
     assert rx_pkt[UDP].dport == test_pkt[UDP].sport
-    assert rx_pkt[UDP].sport == test_pkt[UDP].dport
-    assert rx_pkt[UDP].payload == test_pkt[UDP].payload
+    assert rx_pkt[UDP].sport == test_pkt[UDP].dport   
+    '''
+
+    assert bytes(rx_pkt[UDP].payload) == payload
 
     await RisingEdge(dut.clk)
     await RisingEdge(dut.clk)

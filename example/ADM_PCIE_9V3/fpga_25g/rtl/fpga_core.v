@@ -117,8 +117,38 @@ module fpga_core #
     input  wire        qsfp_1_rx_clk_3,
     input  wire        qsfp_1_rx_rst_3,
     input  wire [63:0] qsfp_1_rxd_3,
-    input  wire [7:0]  qsfp_1_rxc_3
+    input  wire [7:0]  qsfp_1_rxc_3,
+
+    //input and output payload
+
+    output wire [63:0] rx_payload_axis_tdata,
+    output wire [7:0] rx_payload_axis_tkeep,
+    output wire rx_payload_axis_tvalid,
+    input wire rx_payload_axis_tready,
+    output wire  rx_payload_axis_tlast,
+
+    input wire [63:0] tx_payload_axis_tdata,
+    input wire [7:0] tx_payload_axis_tkeep,
+    input wire tx_payload_axis_tvalid,
+    output wire tx_payload_axis_tready,
+    input wire  tx_payload_axis_tlast, 
+
+    //networking parameter
+        // Configuration
+    input wire [47:0] local_mac,
+    input wire [31:0] local_ip,
+    input wire [31:0] gateway_ip,
+    input wire [31:0] subnet_mask,
+    input wire [47:0] dest_mac, // is not used, discovered by arp instead
+    input wire [31:0] dest_ip  
+
 );
+
+initial begin
+  $dumpfile ("dump.vcd");
+  $dumpvars (0, fpga_core);
+  #1;
+end
 
 // AXI between MAC and Ethernet modules
 wire [63:0] rx_axis_tdata;
@@ -159,6 +189,13 @@ wire tx_eth_payload_axis_tvalid;
 wire tx_eth_payload_axis_tready;
 wire tx_eth_payload_axis_tlast;
 wire tx_eth_payload_axis_tuser;
+
+/*
+assign tx_eth_dest_mac = dest_mac;
+assign tx_eth_src_mac = local_mac;
+assign tx_eth_type = 16'h800; //hardcoded to be ipv4
+*/
+
 
 // IP frame connections
 wire rx_ip_hdr_valid;
@@ -264,11 +301,6 @@ wire tx_fifo_udp_payload_axis_tready;
 wire tx_fifo_udp_payload_axis_tlast;
 wire tx_fifo_udp_payload_axis_tuser;
 
-// Configuration
-wire [47:0] local_mac   = 48'h02_00_00_00_00_00;
-wire [31:0] local_ip    = {8'd192, 8'd168, 8'd1,   8'd128};
-wire [31:0] gateway_ip  = {8'd192, 8'd168, 8'd1,   8'd1};
-wire [31:0] subnet_mask = {8'd255, 8'd255, 8'd255, 8'd0};
 
 // IP ports not used
 assign rx_ip_hdr_ready = 1;
@@ -279,7 +311,7 @@ assign tx_ip_dscp = 0;
 assign tx_ip_ecn = 0;
 assign tx_ip_length = 0;
 assign tx_ip_ttl = 0;
-assign tx_ip_protocol = 0;
+assign tx_ip_protocol = 8'b11;
 assign tx_ip_source_ip = 0;
 assign tx_ip_dest_ip = 0;
 assign tx_ip_payload_axis_tdata = 0;
@@ -289,7 +321,8 @@ assign tx_ip_payload_axis_tlast = 0;
 assign tx_ip_payload_axis_tuser = 0;
 
 // Loop back UDP
-wire match_cond = rx_udp_dest_port == 1234;
+//wire match_cond = rx_udp_dest_port == 1234;
+wire match_cond = 1'b1; //ignore port
 wire no_match = !match_cond;
 
 reg match_cond_reg = 0;
@@ -313,15 +346,16 @@ always @(posedge clk) begin
     end
 end
 
-assign tx_udp_hdr_valid = rx_udp_hdr_valid && match_cond;
+//assign tx_udp_hdr_valid = rx_udp_hdr_valid && match_cond;
+assign tx_udp_hdr_valid = 1'b1;
 assign rx_udp_hdr_ready = (tx_eth_hdr_ready && match_cond) || no_match;
 assign tx_udp_ip_dscp = 0;
 assign tx_udp_ip_ecn = 0;
 assign tx_udp_ip_ttl = 64;
 assign tx_udp_ip_source_ip = local_ip;
-assign tx_udp_ip_dest_ip = rx_udp_ip_source_ip;
-assign tx_udp_source_port = rx_udp_dest_port;
-assign tx_udp_dest_port = rx_udp_source_port;
+assign tx_udp_ip_dest_ip = dest_ip;
+assign tx_udp_source_port = rx_udp_dest_port; //ignore right now
+assign tx_udp_dest_port = rx_udp_source_port; //ignore right now
 assign tx_udp_length = rx_udp_length;
 assign tx_udp_checksum = 0;
 
@@ -626,11 +660,11 @@ axis_fifo #(
     .KEEP_WIDTH(8),
     .ID_ENABLE(0),
     .DEST_ENABLE(0),
-    .USER_ENABLE(1),
+    .USER_ENABLE(0),
     .USER_WIDTH(1),
     .FRAME_FIFO(0)
 )
-udp_payload_fifo (
+rx_payload_fifo (
     .clk(clk),
     .rst(rst),
 
@@ -640,9 +674,50 @@ udp_payload_fifo (
     .s_axis_tvalid(rx_fifo_udp_payload_axis_tvalid),
     .s_axis_tready(rx_fifo_udp_payload_axis_tready),
     .s_axis_tlast(rx_fifo_udp_payload_axis_tlast),
-    .s_axis_tid(0),
-    .s_axis_tdest(0),
+    .s_axis_tid(8'b0),
+    .s_axis_tdest(8'b0),
     .s_axis_tuser(rx_fifo_udp_payload_axis_tuser),
+
+    // AXI output
+    .m_axis_tdata(rx_payload_axis_tdata),
+    .m_axis_tkeep(rx_payload_axis_tkeep),
+    .m_axis_tvalid(rx_payload_axis_tvalid),
+    .m_axis_tready(rx_payload_axis_tready),
+    .m_axis_tlast(rx_payload_axis_tlast),
+    .m_axis_tid(),
+    .m_axis_tdest(),
+    .m_axis_tuser(),
+
+    // Status
+    .status_overflow(),
+    .status_bad_frame(),
+    .status_good_frame()
+);
+
+axis_fifo #(
+    .DEPTH(8192),
+    .DATA_WIDTH(64),
+    .KEEP_ENABLE(1),
+    .KEEP_WIDTH(8),
+    .ID_ENABLE(0),
+    .DEST_ENABLE(0),
+    .USER_ENABLE(0),
+    .USER_WIDTH(1),
+    .FRAME_FIFO(0)
+)
+tx_payload_fifo (
+    .clk(clk),
+    .rst(rst),
+
+    // AXI input
+    .s_axis_tdata(tx_payload_axis_tdata),
+    .s_axis_tkeep(tx_payload_axis_tkeep),
+    .s_axis_tvalid(tx_payload_axis_tvalid),
+    .s_axis_tready(tx_payload_axis_tready),
+    .s_axis_tlast(tx_payload_axis_tlast),
+    .s_axis_tid(8'b0),
+    .s_axis_tdest(8'b0),
+    .s_axis_tuser(1'b0),
 
     // AXI output
     .m_axis_tdata(tx_fifo_udp_payload_axis_tdata),
