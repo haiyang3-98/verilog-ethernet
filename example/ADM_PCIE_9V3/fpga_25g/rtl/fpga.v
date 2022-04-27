@@ -31,12 +31,12 @@ THE SOFTWARE.
 /*
  * FPGA top-level module
  */
-module fpga (
+module fpga 
+    (
     /*
      * Clock: 300MHz LVDS
      */
-    input  wire       clk_300mhz_p,
-    input  wire       clk_300mhz_n,
+    input  wire       clk,
 
     /*
      * GPIO
@@ -69,6 +69,8 @@ module fpga (
     input  wire       qsfp_0_mgt_refclk_n,
     input  wire       qsfp_0_modprs_l,
     output wire       qsfp_0_sel_l,
+    output wire qsfp_0_mgt_refclk,
+
 
     output wire       qsfp_1_tx_0_p,
     output wire       qsfp_1_tx_0_n,
@@ -90,22 +92,23 @@ module fpga (
     input  wire       qsfp_1_mgt_refclk_n,
     input  wire       qsfp_1_modprs_l,
     output wire       qsfp_1_sel_l,
+    output wire qsfp_1_mgt_refclk,
 
     output wire       qsfp_reset_l,
-    input  wire       qsfp_int_l
+    input  wire       qsfp_int_l,
 
     //input and output payload
-    output wire [63:0] rx_payload_axis_tdata,
-    output wire [7:0] rx_payload_axis_tkeep,
-    output wire rx_payload_axis_tvalid,
-    input wire rx_payload_axis_tready,
-    output wire  rx_payload_axis_tlast,
+    output wire [255:0] rx_payload_axis_tdata_256,
+    output wire [7:0] rx_payload_axis_tkeep_256,
+    output wire rx_payload_axis_tvalid_256,
+    input wire rx_payload_axis_tready_256,
+    output wire  rx_payload_axis_tlast_256,
 
-    input wire [63:0] tx_payload_axis_tdata,
-    input wire [7:0] tx_payload_axis_tkeep,
-    input wire tx_payload_axis_tvalid,
-    output wire tx_payload_axis_tready,
-    input wire  tx_payload_axis_tlast, 
+    input wire [255:0] tx_payload_axis_tdata_256,
+    input wire [7:0] tx_payload_axis_tkeep_256,
+    input wire tx_payload_axis_tvalid_256,
+    output wire tx_payload_axis_tready_256,
+    input wire  tx_payload_axis_tlast_256, 
 
     //networking parameter
     // Configuration
@@ -134,15 +137,31 @@ wire mmcm_rst = 1'b0;
 wire mmcm_locked;
 wire mmcm_clkfb;
 
+// 256bit to 64bit convertion
+wire [255:0] rx_payload_axis_tdata_64,
+wire [7:0] rx_payload_axis_tkeep_64,
+wire rx_payload_axis_tvalid_64,
+wire rx_payload_axis_tready_64,
+wire  rx_payload_axis_tlast_64,
+wire [255:0] tx_payload_axis_tdata_64,
+wire [7:0] tx_payload_axis_tkeep_64,
+wire tx_payload_axis_tvalid_64,
+wire tx_payload_axis_tready_64,
+wire  tx_payload_axis_tlast_64, 
+
 IBUFGDS #(
    .DIFF_TERM("FALSE"),
    .IBUF_LOW_PWR("FALSE")   
 )
+
+/*
 clk_300mhz_ibufg_inst (
    .O   (clk_300mhz_ibufg),
    .I   (clk_300mhz_p),
    .IB  (clk_300mhz_n) 
 );
+*/
+assign clk_300mhz_ibufg = clk;
 
 // MMCM instance
 // 300 MHz in, 125 MHz out
@@ -752,7 +771,38 @@ qsfp_1_phy_3_inst (
 assign front_led[0] = qsfp_0_rx_block_lock_0;
 assign front_led[1] = qsfp_1_rx_block_lock_0;
 
-fpga_core
+axis_dwidth_converter_256_64 (
+  aclk(clk_390mhz_int),
+  aresetn(rst_390mhz_int),
+  s_axis_tvalid(rx_payload_axis_tvalid_256),
+  s_axis_tready(rx_payload_axis_tready_256),
+  s_axis_tdata(rx_payload_axis_tdata_256),
+  s_axis_tkeep(rx_payload_axis_tkeep_256),
+  s_axis_tlast(rx_payload_axis_tlast_256),
+  m_axis_tvalid(rx_payload_axis_tdata_64),
+  m_axis_tready(rx_payload_axis_tready_64),
+  m_axis_tdata(rx_payload_axis_tdata_64),
+  m_axis_tkeep(rx_payload_axis_tkeep_64),
+  m_axis_tlast(rx_payload_axis_tlast_64)
+);
+
+axis_dwidth_converter_64_256 (
+  aclk(clk_390mhz_int),
+  aresetn(rst_390mhz_int),
+  s_axis_tvalid(tx_payload_axis_tdata_64),
+  s_axis_tready(tx_payload_axis_tready_64),
+  s_axis_tdata(tx_payload_axis_tdata_64),
+  s_axis_tkeep(tx_payload_axis_tkeep_64),
+  s_axis_tlast(tx_payload_axis_tlast_64),
+  m_axis_tvalid(tx_payload_axis_tvalid_256),
+  m_axis_tready(tx_payload_axis_tready_256),
+  m_axis_tdata(tx_payload_axis_tdata_256),
+  m_axis_tkeep(tx_payload_axis_tkeep_256),
+  m_axis_tlast(tx_payload_axis_tlast_256)
+);
+
+
+fpga_core  
 core_inst (
     /*
      * Clock: 390.625 MHz
@@ -846,17 +896,17 @@ core_inst (
 
     //input and output payload
 
-    .rx_payload_axis_tdata,
-    .rx_payload_axis_tkeep,
-    .rx_payload_axis_tvalid,
-    .rx_payload_axis_tready,
-    .rx_payload_axis_tlast,
+    .rx_payload_axis_tdata(rx_payload_axis_tdata_64),
+    .rx_payload_axis_tkeep(rx_payload_axis_tkeep_64),
+    .rx_payload_axis_tvalid(rx_payload_axis_tvalid_64),
+    .rx_payload_axis_tready(rx_payload_axis_tready_64),
+    .rx_payload_axis_tlast(rx_payload_axis_tlast_64),
 
-    .tx_payload_axis_tdata,
-    .tx_payload_axis_tkeep,
-    .tx_payload_axis_tvalid,
-    .tx_payload_axis_tready,
-    .tx_payload_axis_tlast     
+    .tx_payload_axis_tdata(tx_payload_axis_tdata_64),
+    .tx_payload_axis_tkeep(tx_payload_axis_tkeep_64),
+    .tx_payload_axis_tvalid(tx_payload_axis_tvalid_64),
+    .tx_payload_axis_tready(tx_payload_axis_tready_64),
+    .tx_payload_axis_tlast(tx_payload_axis_tlast_64)    
 );
 
 endmodule
