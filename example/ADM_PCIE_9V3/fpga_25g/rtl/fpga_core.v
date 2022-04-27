@@ -120,14 +120,13 @@ module fpga_core #
     input  wire [7:0]  qsfp_1_rxc_3,
 
     //input and output payload
-
-    output wire [63:0] rx_payload_axis_tdata,
+    output wire [255:0] rx_payload_axis_tdata,
     output wire [7:0] rx_payload_axis_tkeep,
     output wire rx_payload_axis_tvalid,
     input wire rx_payload_axis_tready,
     output wire  rx_payload_axis_tlast,
 
-    input wire [63:0] tx_payload_axis_tdata,
+    input wire [255:0] tx_payload_axis_tdata,
     input wire [7:0] tx_payload_axis_tkeep,
     input wire tx_payload_axis_tvalid,
     output wire tx_payload_axis_tready,
@@ -149,6 +148,50 @@ initial begin
   $dumpvars (0, fpga_core);
   #1;
 end
+
+// 256bit to 64bit convertion
+wire [255:0] rx_payload_axis_tdata_64,
+wire [7:0] rx_payload_axis_tkeep_64,
+wire rx_payload_axis_tvalid_64,
+wire rx_payload_axis_tready_64,
+wire  rx_payload_axis_tlast_64,
+wire [255:0] tx_payload_axis_tdata_64,
+wire [7:0] tx_payload_axis_tkeep_64,
+wire tx_payload_axis_tvalid_64,
+wire tx_payload_axis_tready_64,
+wire  tx_payload_axis_tlast_64, 
+
+
+axis_dwidth_converter_256_64 (
+  aclk(clk_390mhz_int),
+  aresetn(rst_390mhz_int),
+  s_axis_tvalid(tx_payload_axis_tvalid),
+  s_axis_tready(tx_payload_axis_tready),
+  s_axis_tdata(tx_payload_axis_tdata),
+  s_axis_tkeep(tx_payload_axis_tkeep),
+  s_axis_tlast(tx_payload_axis_tlast),
+  m_axis_tvalid(tx_payload_axis_tdata_64),
+  m_axis_tready(tx_payload_axis_tready_64),
+  m_axis_tdata(tx_payload_axis_tdata_64),
+  m_axis_tkeep(tx_payload_axis_tkeep_64),
+  m_axis_tlast(tx_payload_axis_tlast_64)
+);
+
+axis_dwidth_converter_64_256 (
+  aclk(clk_390mhz_int),
+  aresetn(rst_390mhz_int),
+  s_axis_tvalid(rx_payload_axis_tdata_64),
+  s_axis_tready(rx_payload_axis_tready_64),
+  s_axis_tdata(rx_payload_axis_tdata_64),
+  s_axis_tkeep(rx_payload_axis_tkeep_64),
+  s_axis_tlast(rx_payload_axis_tlast_64),
+  m_axis_tvalid(rx_payload_axis_tvalid),
+  m_axis_tready(rx_payload_axis_tready),
+  m_axis_tdata(rx_payload_axis_tdata),
+  m_axis_tkeep(rx_payload_axis_tkeep),
+  m_axis_tlast(rx_payload_axis_tlast)
+);
+
 
 // AXI between MAC and Ethernet modules
 wire [63:0] rx_axis_tdata;
@@ -196,6 +239,16 @@ assign tx_eth_src_mac = local_mac;
 assign tx_eth_type = 16'h800; //hardcoded to be ipv4
 */
 
+assign rx_payload_axis_tdata_64,
+wire [7:0] rx_payload_axis_tkeep_64,
+wire rx_payload_axis_tvalid_64,
+wire rx_payload_axis_tready_64,
+wire  rx_payload_axis_tlast_64,
+wire [255:0] tx_payload_axis_tdata_64,
+wire [7:0] tx_payload_axis_tkeep_64,
+wire tx_payload_axis_tvalid_64,
+wire tx_payload_axis_tready_64,
+wire  tx_payload_axis_tlast_64, 
 
 // IP frame connections
 wire rx_ip_hdr_valid;
@@ -679,11 +732,11 @@ rx_payload_fifo (
     .s_axis_tuser(rx_fifo_udp_payload_axis_tuser),
 
     // AXI output
-    .m_axis_tdata(rx_payload_axis_tdata),
-    .m_axis_tkeep(rx_payload_axis_tkeep),
-    .m_axis_tvalid(rx_payload_axis_tvalid),
-    .m_axis_tready(rx_payload_axis_tready),
-    .m_axis_tlast(rx_payload_axis_tlast),
+    .m_axis_tdata(rx_payload_axis_tdata_64),
+    .m_axis_tkeep(rx_payload_axis_tkeep_64),
+    .m_axis_tvalid(rx_payload_axis_tvalid_64),
+    .m_axis_tready(rx_payload_axis_tready_64),
+    .m_axis_tlast(rx_payload_axis_tlast_64),
     .m_axis_tid(),
     .m_axis_tdest(),
     .m_axis_tuser(),
@@ -710,11 +763,11 @@ tx_payload_fifo (
     .rst(rst),
 
     // AXI input
-    .s_axis_tdata(tx_payload_axis_tdata),
-    .s_axis_tkeep(tx_payload_axis_tkeep),
-    .s_axis_tvalid(tx_payload_axis_tvalid),
-    .s_axis_tready(tx_payload_axis_tready),
-    .s_axis_tlast(tx_payload_axis_tlast),
+    .s_axis_tdata(tx_payload_axis_tdata_64),
+    .s_axis_tkeep(tx_payload_axis_tkeep_64),
+    .s_axis_tvalid(tx_payload_axis_tvalid_64),
+    .s_axis_tready(tx_payload_axis_tready_64),
+    .s_axis_tlast(tx_payload_axis_tlast_64),
     .s_axis_tid(8'b0),
     .s_axis_tdest(8'b0),
     .s_axis_tuser(1'b0),

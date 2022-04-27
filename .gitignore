@@ -4,3 +4,6 @@
 *.vvp
 *.kate-swp
 *.vcd
+fpga/
+*.jou
+*.log
