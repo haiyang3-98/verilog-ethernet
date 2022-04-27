@@ -273,12 +273,12 @@ async def run_test(dut):
     assert rx_pkt.dst == test_pkt.src
     assert rx_pkt.src == test_pkt.dst
     
-    '''
+    
     assert rx_pkt[IP].dst == test_pkt[IP].src
     assert rx_pkt[IP].src == test_pkt[IP].dst
-    assert rx_pkt[UDP].dport == test_pkt[UDP].sport
-    assert rx_pkt[UDP].sport == test_pkt[UDP].dport   
-    '''
+    #assert rx_pkt[UDP].dport == test_pkt[UDP].sport
+    #assert rx_pkt[UDP].sport == test_pkt[UDP].dport   
+    
 
     assert bytes(rx_pkt[UDP].payload) == payload
 

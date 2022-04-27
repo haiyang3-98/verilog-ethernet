@@ -93,6 +93,28 @@ module fpga (
 
     output wire       qsfp_reset_l,
     input  wire       qsfp_int_l
+
+    //input and output payload
+    output wire [63:0] rx_payload_axis_tdata,
+    output wire [7:0] rx_payload_axis_tkeep,
+    output wire rx_payload_axis_tvalid,
+    input wire rx_payload_axis_tready,
+    output wire  rx_payload_axis_tlast,
+
+    input wire [63:0] tx_payload_axis_tdata,
+    input wire [7:0] tx_payload_axis_tkeep,
+    input wire tx_payload_axis_tvalid,
+    output wire tx_payload_axis_tready,
+    input wire  tx_payload_axis_tlast, 
+
+    //networking parameter
+    // Configuration
+    input wire [47:0] local_mac,
+    input wire [31:0] local_ip,
+    input wire [31:0] gateway_ip,
+    input wire [31:0] subnet_mask,
+    input wire [47:0] dest_mac, // is not used, discovered by arp instead
+    input wire [31:0] dest_ip  
 );
 
 // Clock and reset
@@ -814,26 +836,27 @@ core_inst (
     .qsfp_1_rxd_3(qsfp_1_rxd_3_int),
     .qsfp_1_rxc_3(qsfp_1_rxc_3_int),
     
-    //
-    .rx_payload_axis_tdata(),
-    .rx_udp_payload_axis_tkeep(),
-    .rx_udp_payload_axis_tvalid(),
-    .rx_udp_payload_axis_tready(1),
-    .rx_udp_payload_axis_tlast(),
-
-    .tx_payload_axis_tdata(0),
-    .tx_udp_payload_axis_tkeep(0),
-    .tx_udp_payload_axis_tvalid(1),
-    .tx_udp_payload_axis_tready(),
-    .tx_udp_payload_axis_tlast(0), 
-
     //network config
-    .local_mac(48'h02_00_00_00_00_00),
-    .local_ip({8'd192, 8'd168, 8'd1,   8'd128})   ,
-    .gateway_ip({8'd192, 8'd168, 8'd1,   8'd1}) ,
-    .subnet_mask({8'd255, 8'd255, 8'd255, 8'd0}),
-    .dest_mac(48'h02_00_00_00_00_01),   
-    .dest_ip({8'd192, 8'd168, 8'd1,   8'd129})    
+    .local_mac,
+    .local_ip  ,
+    .gateway_ip ,
+    .subnet_mask,
+    .dest_mac,   
+    .dest_ip,
+
+    //input and output payload
+
+    .rx_payload_axis_tdata,
+    .rx_payload_axis_tkeep,
+    .rx_payload_axis_tvalid,
+    .rx_payload_axis_tready,
+    .rx_payload_axis_tlast,
+
+    .tx_payload_axis_tdata,
+    .tx_payload_axis_tkeep,
+    .tx_payload_axis_tvalid,
+    .tx_payload_axis_tready,
+    .tx_payload_axis_tlast     
 );
 
 endmodule
