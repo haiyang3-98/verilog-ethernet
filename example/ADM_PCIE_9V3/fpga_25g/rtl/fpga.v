@@ -99,13 +99,13 @@ module fpga
 
     //input and output payload
     output wire [255:0] rx_payload_axis_tdata,
-    output wire [7:0] rx_payload_axis_tkeep,
+    output wire [31:0] rx_payload_axis_tkeep,
     output wire rx_payload_axis_tvalid,
     input wire rx_payload_axis_tready,
     output wire  rx_payload_axis_tlast,
 
     input wire [255:0] tx_payload_axis_tdata,
-    input wire [7:0] tx_payload_axis_tkeep,
+    input wire [31:0] tx_payload_axis_tkeep,
     input wire tx_payload_axis_tvalid,
     output wire tx_payload_axis_tready,
     input wire  tx_payload_axis_tlast, 

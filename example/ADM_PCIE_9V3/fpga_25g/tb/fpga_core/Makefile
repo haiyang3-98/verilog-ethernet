@@ -57,18 +57,18 @@ VERILOG_SOURCES += ../../lib/eth/lib/axis/rtl/priority_encoder.v
 VERILOG_SOURCES += ../../lib/eth/lib/axis/rtl/axis_fifo.v
 VERILOG_SOURCES += ../../lib/eth/lib/axis/rtl/axis_async_fifo.v
 VERILOG_SOURCES += ../../lib/eth/lib/axis/rtl/axis_async_fifo_adapter.v
+VERILOG_SOURCES += ../../lib/eth/lib/axis/rtl/axis_adapter.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/sim/axis_dwidth_converter_64_256.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_dwidth_converter_v1_1_vl_rfs.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_infrastructure_v1_1_vl_rfs.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_register_slice_v1_1_vl_rfs.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_infrastructure_v1_1_0.vh
 
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/sim/axis_dwidth_converter_64_256.v
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_dwidth_converter_v1_1_vl_rfs.v
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_infrastructure_v1_1_vl_rfs.v
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_register_slice_v1_1_vl_rfs.v
-VHDL_SOURCES += ../../ip/axis_dwidth_converter_64_256/hdl/axis_infrastructure_v1_1_0.vh
-
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/sim/axis_dwidth_converter_64_256.v
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_dwidth_converter_v1_1_vl_rfs.v
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_infrastructure_v1_1_vl_rfs.v
-VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_register_slice_v1_1_vl_rfs.v
-VHDL_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_infrastructure_v1_1_0.vh
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/sim/axis_dwidth_converter_256_64.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_dwidth_converter_v1_1_vl_rfs.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_infrastructure_v1_1_vl_rfs.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_register_slice_v1_1_vl_rfs.v
+#VERILOG_SOURCES += ../../ip/axis_dwidth_converter_256_64/hdl/axis_infrastructure_v1_1_0.vh
 # module parameters
 #export PARAM_A ?= value
 
