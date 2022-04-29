@@ -172,8 +172,8 @@ axis_adapter #
     .USER_ENABLE(0)
 ) axis_dwidth_converter_256_64_inst
 (
-    .clk,
-    .rst,
+    .clk(clk),
+    .rst(rst),
     .s_axis_tdata(tx_payload_axis_tdata),
     .s_axis_tkeep(tx_payload_axis_tkeep),
     .s_axis_tvalid(tx_payload_axis_tvalid),
@@ -194,8 +194,8 @@ axis_adapter #
     .USER_ENABLE(0)
 ) axis_dwidth_converter_64_256_inst
 (
-    .clk,
-    .rst,
+    .clk(clk),
+    .rst(rst),
 
     .s_axis_tdata(rx_payload_axis_tdata_64),
     .s_axis_tkeep(rx_payload_axis_tkeep_64),

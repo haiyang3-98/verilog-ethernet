@@ -69,7 +69,7 @@ module fpga
     input  wire       qsfp_0_mgt_refclk_n,
     input  wire       qsfp_0_modprs_l,
     output wire       qsfp_0_sel_l,
-    output wire qsfp_0_mgt_refclk,
+    output wire qsfp_0_usr_clk,
 
 
     output wire       qsfp_1_tx_0_p,
@@ -92,7 +92,7 @@ module fpga
     input  wire       qsfp_1_mgt_refclk_n,
     input  wire       qsfp_1_modprs_l,
     output wire       qsfp_1_sel_l,
-    output wire qsfp_1_mgt_refclk,
+    output wire qsfp_1_usr_clk,
 
     output wire       qsfp_reset_l,
     input  wire       qsfp_int_l,
@@ -129,6 +129,9 @@ wire clk_125mhz_mmcm_out;
 wire clk_125mhz_int;
 wire rst_125mhz_int;
 
+assign qsfp_0_usr_clk = clk_125mhz_int;
+assign qsfp_1_usr_clk = clk_125mhz_int;
+
 // Internal 390.625 MHz clock
 wire clk_390mhz_int;
 wire rst_390mhz_int;
@@ -137,13 +140,13 @@ wire mmcm_rst = 1'b0;
 wire mmcm_locked;
 wire mmcm_clkfb;
 
+/*
 
 IBUFGDS #(
    .DIFF_TERM("FALSE"),
    .IBUF_LOW_PWR("FALSE")   
 )
 
-/*
 clk_300mhz_ibufg_inst (
    .O   (clk_300mhz_ibufg),
    .I   (clk_300mhz_p),
@@ -178,12 +181,7 @@ MMCME3_BASE #(
     .CLKOUT5_DIVIDE(1),
     .CLKOUT5_DUTY_CYCLE(0.5),
     .CLKOUT5_PHASE(0),
-    .CLKOUT6_DIVIDE(1),
-    .CLKOUT6_DUTY_CYCLE(0.5),
-    .CLKOUT6_PHASE(0),
-    .CLKFBOUT_MULT_F(10),
-    .CLKFBOUT_PHASE(0),
-    .DIVCLK_DIVIDE(3),
+    .CLKOUT6_DIVIDE(1),opencapi
     .REF_JITTER1(0.010),
     .CLKIN1_PERIOD(3.333),
     .STARTUP_WAIT("FALSE"),
@@ -287,7 +285,7 @@ wire qsfp_0_rx_block_lock_0;
 wire qsfp_0_rx_block_lock_1;
 wire qsfp_0_rx_block_lock_2;
 wire qsfp_0_rx_block_lock_3;
-
+ 
 wire qsfp_0_mgt_refclk;
 
 IBUFDS_GTE4 ibufds_gte4_qsfp_0_mgt_refclk_inst (
@@ -845,12 +843,12 @@ core_inst (
     .qsfp_1_rxc_3(qsfp_1_rxc_3_int),
     
     //network config
-    .local_mac,
-    .local_ip  ,
-    .gateway_ip ,
-    .subnet_mask,
-    .dest_mac,   
-    .dest_ip,
+    .local_mac(local_mac),
+    .local_ip(local_ip),
+    .gateway_ip(gateway_ip) ,
+    .subnet_mask(subnet_mask),
+    .dest_mac(dest_mac),   
+    .dest_ip(dest_ip),
 
     //input and output payload
 
