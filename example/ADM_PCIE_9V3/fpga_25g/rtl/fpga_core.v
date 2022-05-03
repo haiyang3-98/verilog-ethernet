@@ -125,7 +125,7 @@ module fpga_core #
     output wire rx_payload_axis_tvalid,
     input wire rx_payload_axis_tready,
     output wire  rx_payload_axis_tlast,
-    output wire rx_payload_axis_checksum_OK,
+    output wire rx_payload_axis_tuser,
 
     input wire [255:0] tx_payload_axis_tdata,
     input wire [31:0] tx_payload_axis_tkeep,
@@ -152,18 +152,18 @@ initial begin
   #1;
 end
 
-reg [7:0] checksum;
-wire [7:0] checksum_next;
+reg [47:0] checksum;
+reg [47:0] checksum_next;
 
 // 256bit to 64bit convertion
-wire [255:0] rx_payload_axis_tdata_64;
+wire [63:0] rx_payload_axis_tdata_64;
 wire [7:0] rx_payload_axis_tkeep_64;
 wire rx_payload_axis_tvalid_64;
 wire rx_payload_axis_tready_64;
 wire  rx_payload_axis_tlast_64;
 wire rx_checksum_OK_64;
 
-wire [255:0] tx_payload_axis_tdata_64;
+wire [63:0] tx_payload_axis_tdata_64;
 wire [7:0] tx_payload_axis_tkeep_64;
 wire tx_payload_axis_tvalid_64;
 wire tx_payload_axis_tready_64;
@@ -212,7 +212,7 @@ axis_adapter #
     .m_axis_tvalid(rx_payload_axis_tvalid),
     .m_axis_tready(rx_payload_axis_tready),
     .m_axis_tlast(rx_payload_axis_tlast),
-    .m_axis_tuser(rx_payload_axis_checksum_OK)
+    .m_axis_tuser(rx_payload_axis_tuser)
     );
 
 
@@ -452,10 +452,10 @@ assign tx_udp_ip_ecn = 0;
 assign tx_udp_ip_ttl = 64;
 assign tx_udp_ip_source_ip = local_ip;
 assign tx_udp_ip_dest_ip = dest_ip;
-assign tx_udp_source_port = rx_udp_dest_port; //ignore right now
-assign tx_udp_dest_port = rx_udp_source_port; //ignore right now
-assign tx_udp_length = rx_udp_length;
-assign tx_udp_checksum = 0;
+assign tx_udp_source_port = 0; //ignore right now
+assign tx_udp_dest_port = 0; //ignore right now
+assign tx_udp_length = 0; // will be overrided
+assign tx_udp_checksum = 0; // will be overrided
 
 assign tx_udp_payload_axis_tdata = tx_fifo_udp_payload_axis_tdata;
 assign tx_udp_payload_axis_tkeep = tx_fifo_udp_payload_axis_tkeep;
@@ -469,7 +469,7 @@ assign rx_fifo_udp_payload_axis_tkeep = rx_udp_payload_axis_tkeep;
 assign rx_fifo_udp_payload_axis_tvalid = rx_udp_payload_axis_tvalid && match_cond_reg;
 assign rx_udp_payload_axis_tready = (rx_fifo_udp_payload_axis_tready && match_cond_reg) || no_match_reg;
 assign rx_fifo_udp_payload_axis_tlast = rx_udp_payload_axis_tlast;
-assign rx_fifo_udp_payload_axis_tuser = checksum_next == 16'hFFFF; // used for checksum validation
+assign rx_fifo_udp_payload_axis_tuser = checksum_next == 48'hFFFF; // used for checksum validation
 
 // Place first payload byte onto LEDs
 reg valid_last = 0;
@@ -760,12 +760,30 @@ end else if (rx_fifo_udp_payload_axis_tvalid && rx_fifo_udp_payload_axis_tready)
 end
 end
 
-always @ (*) 
+function [15:0] endian_swap;
+    input [15:0] data; 
+    begin
+        endian_swap = {{data[07:00]},{data[15:08]}};
+    end
+endfunction
+
+always @* 
 begin
-    checksum_next = checksum + rx_udp_payload_axis_tdata[0:15] + rx_udp_payload_axis_tdata[16:31] + 
-        rx_udp_payload_axis_tdata[32:47] + rx_udp_payload_axis_tdata[48:63]
-    if (rx_udp_payload_axis_tlast)  
-        checksum_next += rx_udp_ip_header_checksum + rx_udp_dest_port + rx_udp_source_port + rx_udp_length + rx_udp_checksum;
+
+    //checksum_next = checksum + endian_swap(rx_udp_payload_axis_tdata[15:0]) + endian_swap(rx_udp_payload_axis_tdata[31:16]) + 
+    //    endian_swap(rx_udp_payload_axis_tdata[47:32]) + endian_swap(rx_udp_payload_axis_tdata[63:48]);
+    checksum_next = checksum + rx_udp_payload_axis_tdata[15:0] + rx_udp_payload_axis_tdata[31:16] + 
+        rx_udp_payload_axis_tdata[47:32] + rx_udp_payload_axis_tdata[63:48];    
+    
+    if (rx_udp_payload_axis_tlast)  begin
+        checksum_next += endian_swap(rx_udp_ip_source_ip[31:16])+ endian_swap(rx_udp_ip_source_ip[15:0]) + 
+                        endian_swap(rx_udp_ip_dest_ip[31:16]) + endian_swap(rx_udp_ip_dest_ip[15:0]) + endian_swap(17) + endian_swap(rx_udp_length) +
+                      endian_swap(rx_udp_dest_port) + endian_swap(rx_udp_source_port) + endian_swap(rx_udp_length) + endian_swap(rx_udp_checksum);
+        checksum_next = (checksum_next >> 16) + (checksum_next & 48'hffff);
+        checksum_next += checksum_next >> 16;
+        checksum_next = checksum_next & 48'hffff;
+    end 
+    
 end
 axis_fifo #(
     .DEPTH(8192),

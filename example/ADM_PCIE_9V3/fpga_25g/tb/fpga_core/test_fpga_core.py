@@ -27,6 +27,7 @@ import os
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet import IP, UDP
+from scapy.all import *
 
 import cocotb_test.simulator
 
@@ -51,7 +52,6 @@ class TB:
 
         self.source = AxiStreamSource(AxiStreamBus.from_prefix(dut, "tx_payload_axis"), dut.clk, dut.rst)
         self.sink = AxiStreamSink(AxiStreamBus.from_prefix(dut, "rx_payload_axis"), dut.clk, dut.rst)
-        self.checksum = dut.rx_payload_axis_checksum_OK.value
         # Ethernet
         cocotb.start_soon(Clock(dut.qsfp_0_rx_clk_0, 2.56, units="ns").start())
         self.qsfp_0_0_source = XgmiiSource(dut.qsfp_0_rxd_0, dut.qsfp_0_rxc_0, dut.qsfp_0_rx_clk_0, dut.qsfp_0_rx_rst_0)
@@ -182,7 +182,40 @@ def size_list():
 def incrementing_payload(length):
     return bytearray(itertools.islice(itertools.cycle(range(256)), length))
 
+"""
+def in4_pseudoheader(proto, u, plen):
+    # type: (int, IP, int) -> bytes
+ 
+    if u.len is not None:
+        if u.ihl is None:
+            olen = sum(len(x) for x in u.options)
+            ihl = 5 + olen // 4 + (1 if olen % 4 else 0)
+        else:
+            ihl = u.ihl
+        ln = max(u.len - 4 * ihl, 0)
+    else:
+        ln = plen
 
+    # Filter out IPOption_LSRR and IPOption_SSRR
+    sr_options = [opt for opt in u.options if isinstance(opt, IPOption_LSRR) or
+                  isinstance(opt, IPOption_SSRR)]
+    len_sr_options = len(sr_options)
+    if len_sr_options == 1 and len(sr_options[0].routers):
+        # The checksum must be computed using the final
+        # destination address
+        u.dst = sr_options[0].routers[-1]
+    elif len_sr_options > 1:
+        message = "Found %d Source Routing Options! "
+        message += "Falling back to IP.dst for checksum computation."
+        warning(message, len_sr_options)
+
+    return struct.pack("!4s4sHH",
+                       inet_pton(socket.AF_INET, u.src),
+                       inet_pton(socket.AF_INET, u.dst),
+                       proto,
+                       ln)
+
+"""
 
 @cocotb.test()
 async def run_test(dut):
@@ -206,7 +239,7 @@ async def run_test(dut):
     payload = bytes([x % 256 for x in range(256)])
     eth = Ether(src='5a:51:52:53:54:55', dst='02:00:00:00:00:00')
     ip = IP(src='192.168.1.100', dst='192.168.1.128')
-    udp = UDP(sport=5678, dport=1234)
+    udp = UDP(sport=0, dport=0)
     test_pkt = eth / ip / udp / payload
 
     tb.log.info("TX packet: %s", repr(test_pkt))
@@ -217,9 +250,9 @@ async def run_test(dut):
 
     tb.log.info("Receive payload in AXIS")
     rx_frame = await tb.sink.recv()
-
+    #print(in4_pseudoheader(socket.IPPROTO_UDP, test_pkt[IP], len(raw(test_pkt[UDP]))))
     assert rx_frame.tdata == payload
-
+    assert rx_frame.tuser[-1] == 1  #we user tuser as crc ok
     
 
     
@@ -232,7 +265,6 @@ async def run_test(dut):
     tb.log.info("receive ARP request")
 
     rx_frame = await tb.qsfp_0_0_sink.recv()
-    assert tb.checksum == 1
 
     rx_pkt = Ether(bytes(rx_frame.get_payload()))
 
@@ -279,8 +311,10 @@ async def run_test(dut):
     assert rx_pkt[IP].src == test_pkt[IP].dst
     #assert rx_pkt[UDP].dport == test_pkt[UDP].sport
     #assert rx_pkt[UDP].sport == test_pkt[UDP].dport   
-    
-
+    #print(hex(rx_pkt[UDP].chksum))
+    #chksum = in4_chksum(socket.IPPROTO_UDP, rx_pkt[IP], raw(rx_pkt[UDP]))
+    #print(hex( checksum(raw(rx_pkt[UDP].payload))))
+    #print(hex(chksum))
     assert bytes(rx_pkt[UDP].payload) == payload
 
     await RisingEdge(dut.clk)
