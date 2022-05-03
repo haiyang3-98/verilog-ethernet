@@ -152,7 +152,8 @@ initial begin
   #1;
 end
 
-
+reg [7:0] checksum;
+wire [7:0] checksum_next;
 
 // 256bit to 64bit convertion
 wire [255:0] rx_payload_axis_tdata_64;
@@ -468,7 +469,7 @@ assign rx_fifo_udp_payload_axis_tkeep = rx_udp_payload_axis_tkeep;
 assign rx_fifo_udp_payload_axis_tvalid = rx_udp_payload_axis_tvalid && match_cond_reg;
 assign rx_udp_payload_axis_tready = (rx_fifo_udp_payload_axis_tready && match_cond_reg) || no_match_reg;
 assign rx_fifo_udp_payload_axis_tlast = rx_udp_payload_axis_tlast;
-assign rx_fifo_udp_payload_axis_tuser = rx_udp_ip_header_checksum == rx_udp_checksum; // used for checksum validation
+assign rx_fifo_udp_payload_axis_tuser = checksum_next == 16'hFFFF; // used for checksum validation
 
 // Place first payload byte onto LEDs
 reg valid_last = 0;
@@ -750,6 +751,22 @@ udp_complete_inst (
     .clear_arp_cache(1'b0)
 );
 
+always  @ (posedge clk )
+begin
+if (rst || rx_udp_payload_axis_tlast) begin
+    checksum <= 0;
+end else if (rx_fifo_udp_payload_axis_tvalid && rx_fifo_udp_payload_axis_tready) begin
+    checksum <= checksum_next;
+end
+end
+
+always @ (*) 
+begin
+    checksum_next = checksum + rx_udp_payload_axis_tdata[0:15] + rx_udp_payload_axis_tdata[16:31] + 
+        rx_udp_payload_axis_tdata[32:47] + rx_udp_payload_axis_tdata[48:63]
+    if (rx_udp_payload_axis_tlast)  
+        checksum_next += rx_udp_ip_header_checksum + rx_udp_dest_port + rx_udp_source_port + rx_udp_length + rx_udp_checksum;
+end
 axis_fifo #(
     .DEPTH(8192),
     .DATA_WIDTH(64),
