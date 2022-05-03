@@ -193,8 +193,7 @@ axis_adapter #
 axis_adapter #
 (
     .S_DATA_WIDTH(64),
-    .M_DATA_WIDTH(256),
-    .USER_ENABLE(0)
+    .M_DATA_WIDTH(256)
 ) axis_dwidth_converter_64_256_inst
 (
     .clk(clk),
@@ -758,7 +757,7 @@ axis_fifo #(
     .KEEP_WIDTH(8),
     .ID_ENABLE(0),
     .DEST_ENABLE(0),
-    .USER_ENABLE(0),
+    .USER_ENABLE(1),
     .USER_WIDTH(1),
     .FRAME_FIFO(0)
 )
@@ -784,7 +783,7 @@ rx_payload_fifo (
     .m_axis_tlast(rx_payload_axis_tlast_64),
     .m_axis_tid(),
     .m_axis_tdest(),
-    .m_axis_tuser(),
+    .m_axis_tuser(rx_checksum_OK_64),
 
     // Status
     .status_overflow(),

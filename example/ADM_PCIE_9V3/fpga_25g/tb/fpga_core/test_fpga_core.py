@@ -51,7 +51,7 @@ class TB:
 
         self.source = AxiStreamSource(AxiStreamBus.from_prefix(dut, "tx_payload_axis"), dut.clk, dut.rst)
         self.sink = AxiStreamSink(AxiStreamBus.from_prefix(dut, "rx_payload_axis"), dut.clk, dut.rst)
-        
+        self.checksum = dut.rx_payload_axis_checksum_OK.value
         # Ethernet
         cocotb.start_soon(Clock(dut.qsfp_0_rx_clk_0, 2.56, units="ns").start())
         self.qsfp_0_0_source = XgmiiSource(dut.qsfp_0_rxd_0, dut.qsfp_0_rxc_0, dut.qsfp_0_rx_clk_0, dut.qsfp_0_rx_rst_0)
@@ -232,7 +232,7 @@ async def run_test(dut):
     tb.log.info("receive ARP request")
 
     rx_frame = await tb.qsfp_0_0_sink.recv()
-    assert tb.rx_payload_axis_checksum_OK == 1
+    assert tb.checksum == 1
 
     rx_pkt = Ether(bytes(rx_frame.get_payload()))
 
