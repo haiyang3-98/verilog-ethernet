@@ -125,6 +125,7 @@ module fpga_core #
     output wire rx_payload_axis_tvalid,
     input wire rx_payload_axis_tready,
     output wire  rx_payload_axis_tlast,
+    output wire rx_payload_axis_checksum_OK,
 
     input wire [255:0] tx_payload_axis_tdata,
     input wire [31:0] tx_payload_axis_tkeep,
@@ -159,6 +160,8 @@ wire [7:0] rx_payload_axis_tkeep_64;
 wire rx_payload_axis_tvalid_64;
 wire rx_payload_axis_tready_64;
 wire  rx_payload_axis_tlast_64;
+wire rx_checksum_OK_64;
+
 wire [255:0] tx_payload_axis_tdata_64;
 wire [7:0] tx_payload_axis_tkeep_64;
 wire tx_payload_axis_tvalid_64;
@@ -202,12 +205,14 @@ axis_adapter #
     .s_axis_tvalid(rx_payload_axis_tvalid_64),
     .s_axis_tready(rx_payload_axis_tready_64),
     .s_axis_tlast(rx_payload_axis_tlast_64),
+    .s_axis_tuser(rx_checksum_OK_64),
 
     .m_axis_tdata(rx_payload_axis_tdata),
     .m_axis_tkeep(rx_payload_axis_tkeep),
     .m_axis_tvalid(rx_payload_axis_tvalid),
     .m_axis_tready(rx_payload_axis_tready),
-    .m_axis_tlast(rx_payload_axis_tlast)
+    .m_axis_tlast(rx_payload_axis_tlast),
+    .m_axis_tuser(rx_payload_axis_checksum_OK)
     );
 
 
@@ -464,7 +469,7 @@ assign rx_fifo_udp_payload_axis_tkeep = rx_udp_payload_axis_tkeep;
 assign rx_fifo_udp_payload_axis_tvalid = rx_udp_payload_axis_tvalid && match_cond_reg;
 assign rx_udp_payload_axis_tready = (rx_fifo_udp_payload_axis_tready && match_cond_reg) || no_match_reg;
 assign rx_fifo_udp_payload_axis_tlast = rx_udp_payload_axis_tlast;
-assign rx_fifo_udp_payload_axis_tuser = rx_udp_payload_axis_tuser;
+assign rx_fifo_udp_payload_axis_tuser = rx_udp_ip_header_checksum == rx_udp_checksum; // used for checksum validation
 
 // Place first payload byte onto LEDs
 reg valid_last = 0;
@@ -723,7 +728,7 @@ udp_complete_inst (
     .m_udp_payload_axis_tvalid(rx_udp_payload_axis_tvalid),
     .m_udp_payload_axis_tready(rx_udp_payload_axis_tready),
     .m_udp_payload_axis_tlast(rx_udp_payload_axis_tlast),
-    .m_udp_payload_axis_tuser(rx_udp_payload_axis_tuser),
+    .m_udp_payload_axis_tuser(),
     // Status signals
     .ip_rx_busy(),
     .ip_tx_busy(),

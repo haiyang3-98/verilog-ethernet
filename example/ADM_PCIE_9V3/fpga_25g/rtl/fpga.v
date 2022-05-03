@@ -103,6 +103,7 @@ module fpga
     output wire rx_payload_axis_tvalid,
     input wire rx_payload_axis_tready,
     output wire  rx_payload_axis_tlast,
+    output wire rx_payload_axis_checksum_OK,
 
     input wire [255:0] tx_payload_axis_tdata,
     input wire [31:0] tx_payload_axis_tkeep,
@@ -857,6 +858,7 @@ core_inst (
     .rx_payload_axis_tvalid(rx_payload_axis_tvalid),
     .rx_payload_axis_tready(rx_payload_axis_tready),
     .rx_payload_axis_tlast(rx_payload_axis_tlast),
+    .rx_payload_axis_checksum_OK(rx_payload_axis_checksum_OK),
 
     .tx_payload_axis_tdata(tx_payload_axis_tdata),
     .tx_payload_axis_tkeep(tx_payload_axis_tkeep),
