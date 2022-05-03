@@ -155,6 +155,7 @@ end
 reg [47:0] checksum;
 reg [47:0] checksum_next;
 reg wait_checksum;
+reg [47:0] checksum_header;
 
 // 256bit to 64bit convertion
 wire [63:0] rx_payload_axis_tdata_64;
@@ -727,7 +728,7 @@ udp_complete_inst (
     .m_udp_payload_axis_tdata(rx_udp_payload_axis_tdata),
     .m_udp_payload_axis_tkeep(rx_udp_payload_axis_tkeep),
     .m_udp_payload_axis_tvalid(rx_udp_payload_axis_tvalid),
-    .m_udp_payload_axis_tready(rx_udp_payload_axis_tready && !wait_checksum),
+    .m_udp_payload_axis_tready(rx_udp_payload_axis_tready && !(rx_fifo_udp_payload_axis_tlast && wait_checksum)),
     .m_udp_payload_axis_tlast(rx_udp_payload_axis_tlast),
     .m_udp_payload_axis_tuser(),
     // Status signals
@@ -754,13 +755,16 @@ udp_complete_inst (
 
 always  @ (posedge clk )
 begin
-    wait_checksum <= 0;
-    if (rst || rx_udp_payload_axis_tlast) begin
+    wait_checksum <= 1;
+    checksum_header <= endian_swap(rx_udp_ip_source_ip[31:16])+ endian_swap(rx_udp_ip_source_ip[15:0]) + 
+                        endian_swap(rx_udp_ip_dest_ip[31:16]) + endian_swap(rx_udp_ip_dest_ip[15:0]) + endian_swap(17) + endian_swap(rx_udp_length) +
+                      endian_swap(rx_udp_dest_port) + endian_swap(rx_udp_source_port) + endian_swap(rx_udp_length) + endian_swap(rx_udp_checksum);
+    if (rst || !wait_checksum) begin
         checksum <= 0;
     end else if (rx_fifo_udp_payload_axis_tvalid && rx_fifo_udp_payload_axis_tready) begin
         checksum <= checksum_next;
         if(rx_fifo_udp_payload_axis_tlast) begin
-            wait_checksum <= 1;
+            wait_checksum <= 0;
         end
     end
 end
@@ -778,12 +782,10 @@ begin
     //checksum_next = checksum + endian_swap(rx_udp_payload_axis_tdata[15:0]) + endian_swap(rx_udp_payload_axis_tdata[31:16]) + 
     //    endian_swap(rx_udp_payload_axis_tdata[47:32]) + endian_swap(rx_udp_payload_axis_tdata[63:48]);
 
-    if (wait_checksum)  begin
-        checksum_next = checksum_next + endian_swap(rx_udp_ip_source_ip[31:16])+ endian_swap(rx_udp_ip_source_ip[15:0]) + 
-                        endian_swap(rx_udp_ip_dest_ip[31:16]) + endian_swap(rx_udp_ip_dest_ip[15:0]) + endian_swap(17) + endian_swap(rx_udp_length) +
-                      endian_swap(rx_udp_dest_port) + endian_swap(rx_udp_source_port) + endian_swap(rx_udp_length) + endian_swap(rx_udp_checksum);
+    if (!wait_checksum)  begin
+        checksum_next = checksum + checksum_header;
         checksum_next = (checksum_next >> 16) + (checksum_next & 48'hffff);
-        checksum_next = checksum_next+checksum_next >> 16;
+        checksum_next = checksum_next+(checksum_next >> 16);
         checksum_next = checksum_next & 48'hffff;
     end else begin
         checksum_next = checksum + rx_udp_payload_axis_tdata[15:0] + rx_udp_payload_axis_tdata[31:16] + 
@@ -809,7 +811,7 @@ rx_payload_fifo (
     // AXI input
     .s_axis_tdata(rx_fifo_udp_payload_axis_tdata),
     .s_axis_tkeep(rx_fifo_udp_payload_axis_tkeep),
-    .s_axis_tvalid(rx_fifo_udp_payload_axis_tvalid && !wait_checksum),
+    .s_axis_tvalid(rx_fifo_udp_payload_axis_tvalid && !(rx_fifo_udp_payload_axis_tlast && wait_checksum)),
     .s_axis_tready(rx_fifo_udp_payload_axis_tready),
     .s_axis_tlast(rx_fifo_udp_payload_axis_tlast),
     .s_axis_tid(8'b0),
