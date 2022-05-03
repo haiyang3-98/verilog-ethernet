@@ -232,6 +232,7 @@ async def run_test(dut):
     tb.log.info("receive ARP request")
 
     rx_frame = await tb.qsfp_0_0_sink.recv()
+    assert tb.rx_payload_axis_checksum_OK == 1
 
     rx_pkt = Ether(bytes(rx_frame.get_payload()))
 
