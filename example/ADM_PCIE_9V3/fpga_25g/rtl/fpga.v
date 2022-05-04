@@ -154,7 +154,7 @@ clk_300mhz_ibufg_inst (
    .IB  (clk_300mhz_n) 
 );
 */
-assign clk_300mhz_ibufg = clk;
+assign clk_300mhz_ibufg = clk; //actually 400mhz
 
 // MMCM instance
 // 300 MHz in, 125 MHz out
@@ -164,7 +164,7 @@ assign clk_300mhz_ibufg = clk;
 // Divide by 8 to get output frequency of 125 MHz
 MMCME3_BASE #(
     .BANDWIDTH("OPTIMIZED"),
-    .CLKOUT0_DIVIDE_F(8),
+    .CLKOUT0_DIVIDE_F(12),
     .CLKOUT0_DUTY_CYCLE(0.5),
     .CLKOUT0_PHASE(0),
     .CLKOUT1_DIVIDE(1),
@@ -184,7 +184,7 @@ MMCME3_BASE #(
     .CLKOUT5_PHASE(0),
     .CLKOUT6_DIVIDE(1),
     .REF_JITTER1(0.010),
-    .CLKIN1_PERIOD(3.333),
+    .CLKIN1_PERIOD(2.5),
     .STARTUP_WAIT("FALSE"),
     .CLKOUT4_CASCADE("FALSE")
 )
