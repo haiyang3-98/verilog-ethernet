@@ -321,6 +321,44 @@ async def run_test(dut):
     await RisingEdge(dut.clk)
 
 
+    tb.log.info("test UDP RX packet 2")
+
+    payload = bytes([x % 256 for x in range(1024)])
+    eth = Ether(src='5a:51:52:53:54:55', dst='02:00:00:00:00:00')
+    ip = IP(src='192.168.1.100', dst='192.168.1.128')
+    udp = UDP(sport=0, dport=0)
+    test_pkt = eth / ip / udp / payload
+
+    tb.log.info("TX packet 2: %s", repr(test_pkt))
+
+    test_frame = XgmiiFrame.from_payload(test_pkt.build())
+
+    await tb.qsfp_0_0_source.send(test_frame)
+
+    tb.log.info("Receive payload in AXIS")
+    rx_frame = await tb.sink.recv()
+    #print(in4_pseudoheader(socket.IPPROTO_UDP, test_pkt[IP], len(raw(test_pkt[UDP]))))
+    assert rx_frame.tdata == payload
+    assert rx_frame.tuser[-1] == 1  #we user tuser as crc ok
+
+    tb.log.info("Send payload in AXIS 2")
+    test_frame = AxiStreamFrame(payload)
+    await tb.source.send(test_frame)
+
+    tb.log.info("receive UDP packet")
+
+    rx_frame = await tb.qsfp_0_0_sink.recv()
+
+    rx_pkt = Ether(bytes(rx_frame.get_payload()))
+
+    tb.log.info("RX packet: %s", repr(rx_pkt))
+
+    assert rx_pkt.dst == test_pkt.src
+    assert rx_pkt.src == test_pkt.dst
+    
+    
+    assert rx_pkt[IP].dst == test_pkt[IP].src
+    assert rx_pkt[IP].src == test_pkt[IP].dst
 # cocotb-test
 
 tests_dir = os.path.abspath(os.path.dirname(__file__))
